@@ -109,7 +109,6 @@ func runClient(address, headersFlag string, insecureConnection bool) {
 	// Unary RPC Example
 	pingResponse, err := client.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
-		log.Printf("%s", pingResponse.String())
 		log.Fatalf("Error calling Ping: %v", err)
 	}
 	log.Printf("Unary Ping Response: %s", pingResponse.Message)
