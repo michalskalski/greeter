@@ -9,13 +9,15 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/eiannone/keyboard"
-	pb "github.com/michalskalski/greeter/proto" // Replace with the actual path to your generated proto files
+	pb "github.com/michalskalski/greeter/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 )
 
@@ -85,8 +87,14 @@ func runServer() {
 }
 
 // runClient connects to the server and demonstrates both Unary and Bidirectional Streaming RPCs.
-func runClient(address string, insecureConnection bool) {
-	clientCredentials := credentials.NewTLS(&tls.Config{})
+func runClient(address, headersFlag string, insecureConnection bool) {
+	// HEADERS
+	headers := parseHeaders(headersFlag)
+	ctx := metadata.AppendToOutgoingContext(context.Background(), headers...)
+	//ctx := context.Background()
+	clientCredentials := credentials.NewTLS(&tls.Config{
+		InsecureSkipVerify: true,
+	})
 	if insecureConnection {
 		clientCredentials = insecure.NewCredentials()
 	}
@@ -99,14 +107,15 @@ func runClient(address string, insecureConnection bool) {
 	client := pb.NewGreeterClient(conn)
 
 	// Unary RPC Example
-	pingResponse, err := client.Ping(context.Background(), &pb.PingRequest{})
+	pingResponse, err := client.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
+		log.Printf("%s", pingResponse.String())
 		log.Fatalf("Error calling Ping: %v", err)
 	}
 	log.Printf("Unary Ping Response: %s", pingResponse.Message)
 
 	// Bidirectional Streaming RPC Example
-	stream, err := client.StreamPong(context.Background())
+	stream, err := client.StreamPong(ctx)
 	if err != nil {
 		log.Fatalf("Error creating StreamPong stream: %v", err)
 	}
@@ -158,19 +167,36 @@ func runClient(address string, insecureConnection bool) {
 	}
 }
 
+// parseHeaders parses the headers provided as a comma-separated list of key=value pairs.
+func parseHeaders(headersStr string) []string {
+	headers := []string{}
+	if headersStr == "" {
+		return headers
+	}
+
+	for _, header := range strings.Split(headersStr, ",") {
+		parts := strings.SplitN(header, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			headers = append(headers, key, value)
+		}
+	}
+	return headers
+}
+
 func main() {
 	// Define command-line flags to control behavior.
-	mode := flag.String("mode", "server", "Mode to run: server or client")
-	address := flag.String("address", "localhost:50051", "The server address in the format host:port")
+	clientMode := flag.Bool("client", false, "Run as grpc client")
+	address := flag.String("address", "localhost:50051", "The server address in the format host:port (client only)")
 	insecureConnection := flag.Bool("insecure", false, "Use an insecure connection (client only)")
+	headersFlag := flag.String("headers", "", "Comma-separated list of key=value headers, e.g., 'Authorization=token,Env=prod' (client only)")
 	flag.Parse()
 
 	// Run as either server or client based on the flag.
-	if *mode == "server" {
-		runServer()
-	} else if *mode == "client" {
-		runClient(*address, *insecureConnection)
+	if *clientMode {
+		runClient(*address, *headersFlag, *insecureConnection)
 	} else {
-		log.Fatalf("Invalid mode: %s. Use 'server' or 'client'.", *mode)
+		runServer()
 	}
 }
