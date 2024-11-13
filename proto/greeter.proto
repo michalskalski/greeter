@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package greeter;
+
+option go_package = "github.com/michalskalski/greeter/proto";
+
+service Greeter {
+  // Unary RPC
+  rpc Ping (PingRequest) returns (PingResponse);
+
+  // Bidirectional Streaming RPC
+  rpc StreamPong (stream PingRequest) returns (stream PingResponse);
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string message = 1;
+}
