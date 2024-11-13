@@ -188,7 +188,7 @@ func parseHeaders(headersStr string) []string {
 func main() {
 	// Define command-line flags to control behavior.
 	clientMode := flag.Bool("client", false, "Run as grpc client")
-	address := flag.String("address", "localhost:50051", "The server address in the format host:port (client only)")
+	address := flag.String("address", "localhost:50051", "GRPC endpoint address in the format host:port (client only)")
 	insecureConnection := flag.Bool("insecure", false, "Use an insecure connection (client only)")
 	headersFlag := flag.String("headers", "", "Comma-separated list of key=value headers, e.g., 'Authorization=token,Env=prod' (client only)")
 	flag.Parse()

@@ -6,13 +6,13 @@ Simple grpc server / client for testing
 ``` shell
 Usage of ./greeter:
   -address string
-    	The server address in the format host:port (client only) (default "localhost:50051")
+        GRPC endpoint address in the format host:port (client only) (default "localhost:50051")
   -client
-    	Run as grpc client
+        Run as grpc client
   -headers string
-    	Comma-separated list of key=value headers, e.g., 'Authorization=token,Env=prod' (client only)
+        Comma-separated list of key=value headers, e.g., 'Authorization=token,Env=prod' (client only)
   -insecure
-    	Use an insecure connection (client only)
+        Use an insecure connection (client only)
 ```
 
 ## Deploying in k8s cluster
