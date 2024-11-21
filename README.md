@@ -1,10 +1,12 @@
 Greeter
-------
+-------
 
 Simple grpc server / client for testing
 
+## Client
+
 ``` shell
-Usage of ./greeter:
+Usage of greeter:
   -address string
         GRPC endpoint address in the format host:port (client only) (default "localhost:50051")
   -client
@@ -13,9 +15,13 @@ Usage of ./greeter:
         Comma-separated list of key=value headers, e.g., 'Authorization=token,Env=prod' (client only)
   -insecure
         Use an insecure connection (client only)
+  -resolve string
+        Resolve the 'address' to this IP (client only)
 ```
 
-## Deploying in k8s cluster
+## Server
+
+Deploying in k8s cluster
 
 ``` yaml
 # Namespace definition
@@ -42,7 +48,7 @@ spec:
     spec:
       containers:
         - name: greeter
-          image: ghcr.io/michalskalski/greeter/greeter:v3
+          image: ghcr.io/michalskalski/greeter/greeter:v4
           resources:
             requests:
               cpu: 100m
@@ -77,6 +83,7 @@ spec:
       targetPort: 50051
       protocol: TCP
       name: grpc
+      appProtocol: grpc
   type: ClusterIP
 ---
 # HTTPRoute definition

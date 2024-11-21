@@ -19,6 +19,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/resolver/manual"
 )
 
 // Server is used to implement the Greeter service.
@@ -87,19 +89,44 @@ func runServer() {
 }
 
 // runClient connects to the server and demonstrates both Unary and Bidirectional Streaming RPCs.
-func runClient(address, headersFlag string, insecureConnection bool) {
+func runClient(address, headersFlag, resolveDns string, insecureConnection bool) error {
 	// HEADERS
 	headers := parseHeaders(headersFlag)
 	ctx := metadata.AppendToOutgoingContext(context.Background(), headers...)
-	//ctx := context.Background()
 	clientCredentials := credentials.NewTLS(&tls.Config{
 		InsecureSkipVerify: true,
 	})
 	if insecureConnection {
 		clientCredentials = insecure.NewCredentials()
 	}
+
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(clientCredentials),
+	}
+
+	// Resolve the dns address name to a specific IP address if provided.
+	if resolveDns != "" {
+		ip := net.ParseIP(resolveDns)
+		if ip == nil {
+			return fmt.Errorf("invalid IP address: %s", resolveDns)
+		}
+		_, port, err := net.SplitHostPort(address)
+		if err != nil {
+			return fmt.Errorf("invalid address: %v", err)
+		}
+		realHost := net.JoinHostPort(resolveDns, port)
+		r := manual.NewBuilderWithScheme("local")
+		r.InitialState(resolver.State{
+			Addresses: []resolver.Address{
+				{Addr: realHost},
+			},
+		})
+		opts = append(opts, grpc.WithResolvers(r))
+		address = fmt.Sprintf("%s:///%s", "local", address)
+	}
+
 	// Connect to the server.
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(clientCredentials))
+	conn, err := grpc.NewClient(address, opts...)
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}
@@ -109,14 +136,14 @@ func runClient(address, headersFlag string, insecureConnection bool) {
 	// Unary RPC Example
 	pingResponse, err := client.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
-		log.Fatalf("Error calling Ping: %v", err)
+		return fmt.Errorf("Error calling Ping: %v", err)
 	}
 	log.Printf("Unary Ping Response: %s", pingResponse.Message)
 
 	// Bidirectional Streaming RPC Example
 	stream, err := client.StreamPong(ctx)
 	if err != nil {
-		log.Fatalf("Error creating StreamPong stream: %v", err)
+		return fmt.Errorf("Error creating StreamPong stream: %v", err)
 	}
 	defer stream.CloseSend()
 
@@ -134,7 +161,7 @@ func runClient(address, headersFlag string, insecureConnection bool) {
 
 	// Open the keyboard listener for user input.
 	if err := keyboard.Open(); err != nil {
-		log.Fatalf("failed to open keyboard listener: %v", err)
+		return fmt.Errorf("failed to open keyboard listener: %v", err)
 	}
 	defer keyboard.Close()
 
@@ -150,16 +177,15 @@ func runClient(address, headersFlag string, insecureConnection bool) {
 		switch char {
 		case 'p':
 			if err := stream.Send(&pb.PingRequest{}); err != nil {
-				log.Printf("Error sending Ping: %v", err)
-				return
+				return fmt.Errorf("Error sending Ping: %v", err)
 			}
 		case 'e':
 			log.Println("Exiting client.")
-			return
+			return nil
 		default:
 			if key == keyboard.KeyEsc {
 				log.Println("Exiting client.")
-				return
+				return nil
 			}
 			log.Println("Invalid input. Press 'p' to send a Ping, or 'e' to exit.")
 		}
@@ -189,12 +215,15 @@ func main() {
 	clientMode := flag.Bool("client", false, "Run as grpc client")
 	address := flag.String("address", "localhost:50051", "GRPC endpoint address in the format host:port (client only)")
 	insecureConnection := flag.Bool("insecure", false, "Use an insecure connection (client only)")
+	resolveDns := flag.String("resolve", "", "Resolve the 'address' to this IP (client only)")
 	headersFlag := flag.String("headers", "", "Comma-separated list of key=value headers, e.g., 'Authorization=token,Env=prod' (client only)")
 	flag.Parse()
 
 	// Run as either server or client based on the flag.
 	if *clientMode {
-		runClient(*address, *headersFlag, *insecureConnection)
+		if err := runClient(*address, *headersFlag, *resolveDns, *insecureConnection); err != nil {
+			log.Fatalf("client error: %v", err)
+		}
 	} else {
 		runServer()
 	}
