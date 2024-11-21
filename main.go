@@ -165,7 +165,7 @@ func runClient(address, headersFlag, resolveDns string, insecureConnection bool)
 	}
 	defer keyboard.Close()
 
-	log.Println("Press 'p' to send a Ping, or 'e' to exit.")
+	log.Println("Press 'p' to send a Ping, or 'q' to quit.")
 
 	// Capture keypresses to control the client behavior.
 	for {
@@ -179,7 +179,7 @@ func runClient(address, headersFlag, resolveDns string, insecureConnection bool)
 			if err := stream.Send(&pb.PingRequest{}); err != nil {
 				return fmt.Errorf("Error sending Ping: %v", err)
 			}
-		case 'e':
+		case 'q':
 			log.Println("Exiting client.")
 			return nil
 		default:
@@ -187,7 +187,7 @@ func runClient(address, headersFlag, resolveDns string, insecureConnection bool)
 				log.Println("Exiting client.")
 				return nil
 			}
-			log.Println("Invalid input. Press 'p' to send a Ping, or 'e' to exit.")
+			log.Println("Invalid input. Press 'p' to send a Ping, or 'q' to quit.")
 		}
 	}
 }

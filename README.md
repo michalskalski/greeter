@@ -48,7 +48,7 @@ spec:
     spec:
       containers:
         - name: greeter
-          image: ghcr.io/michalskalski/greeter/greeter:v4
+          image: ghcr.io/michalskalski/greeter/greeter:v5
           resources:
             requests:
               cpu: 100m
